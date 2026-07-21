@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Data & artifacts (never commit fMRI data or checkpoints)
+data/
+checkpoints/
+*.nii
+*.nii.gz
+*.h5
+*.pt
+*.ckpt
+
+# Experiment logs
+wandb/
+runs/
+lightning_logs/
+outputs/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

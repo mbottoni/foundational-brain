@@ -1,0 +1,37 @@
+# Default configuration for pretraining the fMRI foundation model.
+
+data:
+  dataset: hcp                # placeholder; wire up in Phase 1
+  atlas: schaefer_400         # parcellation → N_regions
+  n_regions: 400
+  seq_len: 64                 # timepoints per training window
+  normalize: zscore           # per-region z-scoring
+  batch_size: 32
+
+model:
+  latent_dim: 256             # z_t dimensionality
+  encoder_hidden: [1024, 512]
+  decoder_hidden: [512, 1024]
+  variational: false          # VAE-style bottleneck (Phase 6)
+  rnn:
+    type: gru                 # gru | lstm
+    hidden_dim: 512
+    num_layers: 2
+    dropout: 0.1
+
+train:
+  epochs: 100
+  lr: 3.0e-4
+  weight_decay: 1.0e-4
+  mask_ratio: 0.15            # fraction of timepoints masked in latent space
+  loss_weights:
+    reconstruction: 1.0
+    forecast: 1.0
+    masked: 1.0
+    kl: 0.0
+  amp: true                   # mixed precision
+  seed: 42
+
+log:
+  backend: tensorboard        # tensorboard | wandb
+  checkpoint_every: 5

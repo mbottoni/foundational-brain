@@ -1,0 +1,149 @@
+# foundational-brain
+
+A **foundation model for fMRI** built from three composable parts:
+
+```
+        ┌───────────┐        ┌────────────────────────┐        ┌───────────┐
+ fMRI   │           │ latent │   Foundation model     │ latent │           │  fMRI
+ ─────► │  Encoder  │ ─────► │   over the latent      │ ─────► │  Decoder  │ ─────►
+ signal │  (spatial)│  z_t   │   space (RNN dynamics) │  ẑ_t   │  (spatial)│  recon
+        └───────────┘        └────────────────────────┘        └───────────┘
+```
+
+The goal is a **pure, self-supervised foundation model**: no labels, no downstream
+task baked in. We learn the *dynamics of brain activity* by compressing each fMRI
+frame into a latent vector, modeling the temporal evolution of those latents with a
+recurrent network, and reconstructing the signal. Once trained, the encoder + latent
+model produce general-purpose representations that transfer to downstream tasks
+(decoding, subject/state classification, forecasting, etc.).
+
+---
+
+## Why this design
+
+- **Encoder / Decoder** decouple *what a brain state looks like* (spatial structure)
+  from *how it evolves* (temporal dynamics). The encoder learns a compact, denoised
+  representation of a single fMRI frame; the decoder inverts it.
+- **RNN in the latent space** is the "foundation" component. fMRI is a relatively
+  short, slow (TR ≈ 0.7–2 s), noisy time series. An RNN (GRU/LSTM, later optionally a
+  state-space model) is a strong, parameter-efficient prior for these dynamics and
+  avoids the quadratic cost of attention over long scans.
+- **Self-supervised objectives** (autoregressive next-frame prediction + masked
+  latent modeling) require no labels, so we can pretrain on large heterogeneous fMRI
+  corpora.
+
+---
+
+## Data representation
+
+fMRI is 4D: `(X, Y, Z, T)`. We support two representations, starting with the first:
+
+1. **Parcellated ROI time series (primary).** Project each volume onto a brain atlas
+   (e.g. Schaefer-400, AAL, Gordon) → a matrix `T × N_regions`. Tractable, standard,
+   comparable across subjects/scanners. This is what the initial model consumes.
+2. **Voxel / patch-level (stretch goal).** 3D patches of the volume for a
+   higher-resolution encoder once the pipeline is validated on parcels.
+
+**Candidate public datasets** (open, no PHI): Human Connectome Project (HCP),
+UK Biobank (access-gated), OpenNeuro studies, NSD, ABIDE, ADHD-200. Start small with
+one preprocessed resting-state dataset, then scale.
+
+---
+
+## Model architecture
+
+### 1. Encoder  `E: x_t → z_t`
+- Input: one fMRI frame `x_t ∈ ℝ^{N_regions}` (or a 3D patch grid).
+- MLP / 1D-conv encoder → latent `z_t ∈ ℝ^d` (e.g. `d = 128–256`).
+- Optional variational bottleneck (VAE-style) for a smooth, regularized latent space.
+
+### 2. Foundation model  `F: z_{1:t} → ẑ_{t+1}`
+- Recurrent core (GRU or LSTM) rolling over the latent sequence.
+- Learns temporal dynamics of brain states; the hidden state is the transferable
+  "brain dynamics" representation.
+- Trained to (a) predict the next latent autoregressively and (b) fill masked latents.
+
+### 3. Decoder  `D: z_t → x̂_t`
+- Mirrors the encoder; maps latent back to ROI space.
+- Reconstruction loss ties the latent space to real signal.
+
+### Training objectives (self-supervised, combined)
+- **Reconstruction:** `‖D(E(x_t)) − x_t‖²` — keeps latents informative.
+- **Latent forecasting:** `‖F(z_{1:t}) − z_{t+1}‖²` and/or reconstruct `x_{t+1}` from
+  the predicted latent — the core dynamics objective.
+- **Masked latent modeling:** randomly mask timepoints; reconstruct them from context.
+- (Optional) **KL** term if the encoder is variational.
+
+---
+
+## Repository structure
+
+```
+foundational-brain/
+├── README.md
+├── requirements.txt
+├── pyproject.toml
+├── configs/
+│   └── default.yaml          # data / model / training hyperparameters
+├── data/                     # (gitignored) raw + preprocessed fMRI
+├── notebooks/                # exploration, visualization
+├── src/
+│   └── foundational_brain/
+│       ├── data/             # loading, parcellation, normalization, datasets
+│       ├── models/           # encoder, decoder, latent RNN, full model
+│       ├── training/         # loops, losses, optimizers, checkpointing
+│       └── eval/             # reconstruction/forecast metrics, probing tasks
+├── scripts/                  # entrypoints: preprocess, pretrain, evaluate
+└── tests/
+```
+
+---
+
+## Roadmap
+
+**Phase 0 — Scaffolding** ✅ (this commit)
+- Repo, README plan, environment, project skeleton.
+
+**Phase 1 — Data pipeline**
+- Pick + download one open resting-state dataset.
+- Parcellation → normalized `T × N_regions` tensors; windowing into sequences.
+- `Dataset`/`DataLoader`, train/val/test split by subject.
+
+**Phase 2 — Autoencoder (spatial only)**
+- Implement Encoder + Decoder; train per-frame reconstruction.
+- Validate the latent space (variance explained, reconstruction quality).
+
+**Phase 3 — Latent dynamics model (the foundation)**
+- Add the RNN over latents; autoregressive next-frame + masked-latent objectives.
+- Train end-to-end (or freeze encoder first, then joint fine-tune).
+
+**Phase 4 — Scale pretraining**
+- Multiple datasets/subjects; larger latent + RNN; logging (W&B/TensorBoard);
+  checkpointing; mixed precision.
+
+**Phase 5 — Evaluation & transfer**
+- Intrinsic: reconstruction / forecasting error, latent trajectory analysis.
+- Extrinsic (linear probing on frozen features): subject ID, task/state, age, etc.
+- Compare against baselines (PCA, raw-signal models, published fMRI foundation models
+  such as BrainLM).
+
+**Phase 6 — Extensions**
+- Variational / diffusion decoder, voxel-level encoder, state-space (Mamba/S4) latent
+  core, cross-subject/cross-scanner generalization.
+
+---
+
+## Setup
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## Status
+
+🚧 Early scaffolding. Phase 0 complete — see the roadmap above for what's next.
+
+## License
+
+MIT (see `LICENSE`).

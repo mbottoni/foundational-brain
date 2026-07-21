@@ -1,0 +1,18 @@
+# Core
+numpy
+scipy
+torch
+
+# fMRI / neuroimaging
+nibabel
+nilearn
+
+# Data / config / logging
+pyyaml
+pandas
+scikit-learn
+tqdm
+tensorboard
+
+# Dev
+pytest
