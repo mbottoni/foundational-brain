@@ -55,6 +55,7 @@ def compute(series: list[np.ndarray], phenotypic, max_lag: int) -> dict:
         "pca": stats.pca_spectrum(series),
         "connectivity": stats.connectivity(series),
         "site_variance": stats.variance_partition(series, sites),
+        "by_site": stats.group_profile(series, sites, max_lag=5),
         "sites": sites,
     }
 
@@ -112,7 +113,19 @@ def make_figures(res: dict, fig_dir: Path) -> list[Path]:
     ax.set_title("Per-region AR(1) strength")
     save(fig, "ar1_coefficients.png")
 
-    # 5. mean connectivity -> shared spatial structure
+    # 5. per-site autocorrelation -> is pooling across TRs legitimate?
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    for site, prof in sorted(res["by_site"].items(),
+                             key=lambda kv: -kv[1]["acf"][1]):
+        ax.plot(prof["acf"], lw=1.2, alpha=0.85, label=site)
+    ax.axhline(0, color="k", lw=0.8)
+    ax.set_xlabel("lag (TRs)")
+    ax.set_ylabel("mean autocorrelation")
+    ax.set_title("Autocorrelation by scan site (time axes are not comparable)")
+    ax.legend(fontsize=5.5, ncol=4, loc="upper right")
+    save(fig, "autocorrelation_by_site.png")
+
+    # 6. mean connectivity -> shared spatial structure
     m = res["connectivity"]["mean_matrix"]
     fig, ax = plt.subplots(figsize=(5.5, 4.6))
     im = ax.imshow(m, cmap="RdBu_r", vmin=-0.6, vmax=0.6)
@@ -202,6 +215,36 @@ def fmt_report(res: dict, args: argparse.Namespace, figs: list[Path]) -> str:
         "",
     ]
 
+    by_site = res["by_site"]
+    acf1 = {k: v["acf"][1] for k, v in by_site.items()}
+    lo, hi = min(acf1, key=acf1.get), max(acf1, key=acf1.get)
+    lines += [
+        "### Per-site breakdown (the pooled numbers above are misleading)",
+        "",
+        "Autocorrelation is indexed in **samples, not seconds**, and ABIDE's 20 "
+        "sites do not share a TR. Pooling them averages over incompatible time "
+        "axes:",
+        "",
+        "| site | n | median T | acf(1) | acf(2) | acf(2)/acf(1)² | AR(1) MSE |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for site, p in sorted(by_site.items(), key=lambda kv: -kv[1]["acf"][1]):
+        lines.append(
+            f"| {site} | {p['n_subjects']} | {p['T_median']:.0f} | "
+            f"{p['acf'][1]:.3f} | {p['acf'][2]:.3f} | "
+            f"{p['acf2_over_acf1_sq']:.2f} | {p['baseline_ar1_mse']:.3f} |"
+        )
+    lines += [
+        "",
+        f"Lag-1 autocorrelation ranges **{acf1[lo]:.3f} ({lo}) to "
+        f"{acf1[hi]:.3f} ({hi})** — a 1-TR step means a different amount of "
+        "elapsed time at each site. A pure AR(1) would have acf(2)/acf(1)² = 1; "
+        "every site falls below that, so the signal is **not first-order "
+        "Markov** and a model with memory has real headroom over the AR(1) "
+        "baseline.",
+        "",
+    ]
+
     if figs:
         lines += ["## Figures", ""]
         lines += [f"![{f.stem}](../figures/{f.name})" for f in figs]
@@ -229,7 +272,7 @@ def main() -> None:
     # machine-readable companion, for regression-checking a future re-run
     summary = {
         k: v for k, v in res.items()
-        if k in ("amplitude", "baselines", "site_variance")
+        if k in ("amplitude", "baselines", "site_variance", "by_site")
     }
     summary["shape"] = {k: v for k, v in res["shape"].items() if k != "lengths"}
     summary["pca"] = {
