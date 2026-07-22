@@ -1,21 +1,40 @@
 # Default configuration for pretraining the fMRI foundation model.
+#
+# Values marked [data] were set from docs/data_report.md (871 ABIDE subjects,
+# 168,434 frames) rather than picked by convention. Re-run
+# scripts/explore_data.py after changing dataset/atlas and revisit them.
 
 data:
-  dataset: hcp                # placeholder; wire up in Phase 1
-  atlas: schaefer_400         # parcellation → N_regions
-  n_regions: 400
-  seq_len: 64                 # timepoints per training window
-  normalize: zscore           # per-region z-scoring
+  dataset: abide              # [data] ABIDE-PCP: 871 QC'd subjects, 20 sites
+  derivative: rois_cc200      # [data] ships pre-parcellated as T x 200
+  atlas: cc200                # only used when parcellating raw NIfTI ourselves
+  n_regions: 200              # [data] CC200 delivers exactly 200 regions
+  seq_len: 64                 # [data] shortest scan is T=78, so 64 keeps every
+                              #        subject; 128 would drop ~all of OHSU
+  normalize: zscore_per_region
+                              # [data] per-region std spans 0 to 237 within the
+                              #        corpus — a global scale factor would let
+                              #        a handful of regions dominate the loss
+  drop_flat_regions: true     # [data] 0.03% of regions are exactly constant
+  split: by_subject_stratified_by_site
+                              # [data] site explains only 6.1% of connectivity
+                              #        variance, but sites differ in TR, so
+                              #        splits must not concentrate one site
   batch_size: 32
 
 model:
-  latent_dim: 256             # z_t dimensionality
-  encoder_hidden: [1024, 512]
-  decoder_hidden: [512, 1024]
+  # [data] Frame space is NOT low rank: 125/157/189 of 200 PCs are needed for
+  # 90/95/99% of variance, effective rank 85.6. latent_dim must sit below the
+  # effective rank to be a real bottleneck, but far enough above ~86 loses
+  # signal. 128 is the compromise; 256 (the old value) exceeded n_regions
+  # entirely and was an expansion, not a compression.
+  latent_dim: 128
+  encoder_hidden: [512, 256]  # sized to a 200-dim input, not a 400-dim one
+  decoder_hidden: [256, 512]
   variational: false          # VAE-style bottleneck (Phase 6)
   rnn:
     type: gru                 # gru | lstm
-    hidden_dim: 512
+    hidden_dim: 256
     num_layers: 2
     dropout: 0.1
 
@@ -24,6 +43,9 @@ train:
   lr: 3.0e-4
   weight_decay: 1.0e-4
   mask_ratio: 0.15            # fraction of timepoints masked in latent space
+  forecast_horizon: 1         # [data] at 2+ TR, persistence AND AR(1) are at or
+                              #        worse than predicting the mean — a
+                              #        multi-step loss would be fitting noise
   loss_weights:
     reconstruction: 1.0
     forecast: 1.0
@@ -31,6 +53,17 @@ train:
     kl: 0.0
   amp: true                   # mixed precision
   seed: 42
+
+eval:
+  # [data] Baselines the model must beat, per docs/data_report.md. These are
+  # MSE on per-region z-scored series at a 1 TR horizon, so 1.0 == predicting
+  # the mean. Report per site: the AR(1) bar ranges 0.240 (PITT) to 0.713
+  # (UCLA_2), so a corpus-wide number mostly measures site mix.
+  baseline_mse_1tr:
+    mean: 1.003
+    persistence: 0.513
+    ar1: 0.435                # <- the number to beat
+  report_per_site: true
 
 log:
   backend: tensorboard        # tensorboard | wandb
