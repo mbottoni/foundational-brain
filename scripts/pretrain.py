@@ -143,8 +143,13 @@ def main() -> None:
         + ", ".join(f"{k}={len(v)}" for k, v in datasets.items())
     )
 
-    # normalized per-subject series, matching exactly what the model sees
-    norm = [normalize_subject(s) for s in group_series]
+    # Normalized per-subject series, matching exactly what the model sees:
+    # mask flat regions FIRST, then normalize. Normalizing the full 200 regions
+    # would score the baselines on 18 regions the model never receives, and
+    # those regions are constant in some subjects — they z-score to zero, which
+    # drags the baseline MSE down and hands it an advantage the model cannot
+    # have. The headline "beats AR(1)" claim depends on this alignment.
+    norm = [normalize_subject(s[:, keep]) for s in group_series]
     split_series = {k: [norm[i] for i in idx] for k, idx in splits.items()}
     split_sites = {k: [group_sites[i] for i in idx] for k, idx in splits.items()}
 
