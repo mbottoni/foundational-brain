@@ -44,9 +44,34 @@ fMRI is 4D: `(X, Y, Z, T)`. We support two representations, starting with the fi
 2. **Voxel / patch-level (stretch goal).** 3D patches of the volume for a
    higher-resolution encoder once the pipeline is validated on parcels.
 
-**Candidate public datasets** (open, no PHI): Human Connectome Project (HCP),
-UK Biobank (access-gated), OpenNeuro studies, NSD, ABIDE, ADHD-200. Start small with
-one preprocessed resting-state dataset, then scale.
+**Primary corpus: ABIDE-PCP** — 871 quality-checked resting-state subjects across
+20 sites, distributed *already parcellated* (CC200 → `T × 200`), fully open, no
+access application. Fetched by `src/foundational_brain/data/download.py`.
+`development_fmri` (4D NIfTI) exercises the raw-volume → atlas path. Later scaling
+candidates: OpenNeuro, HCP, ADHD-200.
+
+See **[`docs/data_report.md`](docs/data_report.md)** for the profile of this corpus
+and the measurements behind the hyperparameters in `configs/default.yaml`.
+
+### What the data actually said
+
+Five findings from profiling all 871 subjects that changed the plan:
+
+1. **A brain frame is not low-rank.** 125 of 200 components are needed for 90% of
+   frame variance (effective rank ≈ 86). The originally configured `latent_dim=256`
+   *exceeded the input dimension* — an expansion, not a bottleneck. Now 128.
+2. **Forecasting only works at 1 TR.** At a 2-TR horizon both persistence and AR(1)
+   are already *worse* than predicting the mean. A multi-step forecasting objective
+   would be fitting noise, so `forecast_horizon: 1`.
+3. **The bar is AR(1) at 0.435 MSE** (56.6% of variance, z-scored). The latent RNN
+   is only worth its parameters if it beats a per-region scalar.
+4. **Sites do not share a TR.** Lag-1 autocorrelation ranges 0.534 to 0.874 across
+   sites — a "1-step" window means a different amount of elapsed time depending on
+   where the subject was scanned. Pooling naively averages over incompatible time
+   axes.
+5. **But the dynamics are not AR(1) either.** `acf(2)/acf(1)²` is 0.43–0.72 (negative
+   at three sites) where a first-order Markov process would give 1.0 — so a model
+   with memory has genuine headroom over the baseline.
 
 ---
 
@@ -104,10 +129,17 @@ foundational-brain/
 **Phase 0 — Scaffolding** ✅ (this commit)
 - Repo, README plan, environment, project skeleton.
 
-**Phase 1 — Data pipeline**
-- Pick + download one open resting-state dataset.
-- Parcellation → normalized `T × N_regions` tensors; windowing into sequences.
-- `Dataset`/`DataLoader`, train/val/test split by subject.
+**Phase 1a — Data acquisition & exploration** ✅
+- ABIDE-PCP fetchers + nilearn-based parcellation for raw NIfTI.
+- Full corpus profile → `docs/data_report.md`, config set from measurements.
+- Statistics tested against analytically-known synthetic answers.
+
+**Phase 1b — Data pipeline** (next)
+- Windowing into `seq_len=64` sequences; per-region z-scoring; flat-region drop.
+- **Resolve the TR problem** (finding 4): source per-site TR and either resample to
+  a common sampling interval, condition the model on TR, or restrict pretraining to
+  one TR group. This is a prerequisite for pooling sites, not an optimization.
+- `Dataset`/`DataLoader`, train/val/test split by subject, stratified by site.
 
 **Phase 2 — Autoencoder (spatial only)**
 - Implement Encoder + Decoder; train per-frame reconstruction.
@@ -116,6 +148,8 @@ foundational-brain/
 **Phase 3 — Latent dynamics model (the foundation)**
 - Add the RNN over latents; autoregressive next-frame + masked-latent objectives.
 - Train end-to-end (or freeze encoder first, then joint fine-tune).
+- **Success criterion, set by the data:** beat 0.435 MSE at a 1-TR horizon,
+  reported per site (the per-site bar ranges 0.240–0.713).
 
 **Phase 4 — Scale pretraining**
 - Multiple datasets/subjects; larger latent + RNN; logging (W&B/TensorBoard);
@@ -135,14 +169,27 @@ foundational-brain/
 
 ## Setup
 
+Python **3.12** (3.14 has no torch wheels yet, and its bundled `ensurepip` is
+broken on Homebrew):
+
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python -r requirements.txt
+```
+
+Reproduce the data report (downloads ~870 files into the gitignored `data/`,
+roughly 15 minutes on a first run, cached afterwards):
+
+```bash
+.venv/bin/python scripts/explore_data.py --n-subjects 0
+.venv/bin/python -m pytest
 ```
 
 ## Status
 
-🚧 Early scaffolding. Phase 0 complete — see the roadmap above for what's next.
+🚧 Phases 0 and 1a complete: scaffolding, public data acquisition, and a full
+profile of the ABIDE corpus with hyperparameters set from it. Next is Phase 1b —
+the windowing/`DataLoader` pipeline, and resolving cross-site TR heterogeneity.
 
 ## License
 
