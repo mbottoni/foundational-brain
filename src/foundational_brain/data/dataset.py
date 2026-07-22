@@ -152,6 +152,17 @@ def build_datasets(
     split shares one input width; it uses no per-split statistics, so it does
     not leak.
     """
+    if not series:
+        raise ValueError(
+            "no subjects to build datasets from — if you filtered by TR group, "
+            "note that ABIDE is ordered by site, so a small --n-subjects can "
+            "select zero subjects from the target group"
+        )
+    if len(sites) != len(series):
+        raise ValueError(
+            f"got {len(sites)} site labels for {len(series)} subjects"
+        )
+
     keep = np.ones(series[0].shape[1], dtype=bool)
     if drop_flat:
         series, keep = drop_flat_regions(series)
