@@ -1,0 +1,253 @@
+{
+  "n_subjects_total": 871,
+  "n_subjects_pretrain_group": 522,
+  "n_regions": 182,
+  "seq_len": 64,
+  "latent_dim": 128,
+  "splits": {
+    "train": 419,
+    "val": 52,
+    "test": 51
+  },
+  "windows": {
+    "train": 2199,
+    "val": 141,
+    "test": 138
+  },
+  "baselines": {
+    "n_train_subjects": 419,
+    "n_eval_subjects": 52,
+    "ar1_rho_median": 0.7822962403297424,
+    "forecast": {
+      "h1": {
+        "mean": 1.0027340570429066,
+        "persistence": 0.4367145679225664,
+        "ar1": 0.3890575011009002
+      },
+      "h2": {
+        "mean": 1.0041586881905187,
+        "persistence": 1.4112366997404104,
+        "ar1": 1.0106514021147666
+      }
+    },
+    "reconstruction": {
+      "pca_128": 0.07504211354898488
+    },
+    "per_site": {
+      "CALTECH": {
+        "n_subjects": 2,
+        "forecast_h1": {
+          "mean": 1.0049115805112199,
+          "persistence": 0.46492872672549485,
+          "ar1": 0.41121726817549864
+        },
+        "reconstruction_pca_128": 0.07292666156015966
+      },
+      "CMU": {
+        "n_subjects": 1,
+        "forecast_h1": {
+          "mean": 1.0015855199257757,
+          "persistence": 0.22295935336050962,
+          "ar1": 0.2225012125148645
+        },
+        "reconstruction_pca_128": 0.0710930521157541
+      },
+      "NYU": {
+        "n_subjects": 17,
+        "forecast_h1": {
+          "mean": 1.0036481770083667,
+          "persistence": 0.44829375312870623,
+          "ar1": 0.3980690078870239
+        },
+        "reconstruction_pca_128": 0.08288062797797906
+      },
+      "SDSU": {
+        "n_subjects": 3,
+        "forecast_h1": {
+          "mean": 1.0037542992564024,
+          "persistence": 0.4280550566125388,
+          "ar1": 0.38234147247529154
+        },
+        "reconstruction_pca_128": 0.0627399715153011
+      },
+      "STANFORD": {
+        "n_subjects": 2,
+        "forecast_h1": {
+          "mean": 1.0032611757856924,
+          "persistence": 0.5037491704014099,
+          "ar1": 0.4413251874062689
+        },
+        "reconstruction_pca_128": 0.06815888426758789
+      },
+      "TRINITY": {
+        "n_subjects": 4,
+        "forecast_h1": {
+          "mean": 1.0044511305415273,
+          "persistence": 0.4490308410417105,
+          "ar1": 0.3991220695760805
+        },
+        "reconstruction_pca_128": 0.06457980303955997
+      },
+      "UM_1": {
+        "n_subjects": 9,
+        "forecast_h1": {
+          "mean": 1.0016237251948956,
+          "persistence": 0.4327031187951317,
+          "ar1": 0.38581714239501125
+        },
+        "reconstruction_pca_128": 0.07147390568716253
+      },
+      "UM_2": {
+        "n_subjects": 3,
+        "forecast_h1": {
+          "mean": 1.0015292660911252,
+          "persistence": 0.4393520017801631,
+          "ar1": 0.3911104290107343
+        },
+        "reconstruction_pca_128": 0.0935373709421561
+      },
+      "USM": {
+        "n_subjects": 7,
+        "forecast_h1": {
+          "mean": 1.0021013593975758,
+          "persistence": 0.4435807411685288,
+          "ar1": 0.39443151120346126
+        },
+        "reconstruction_pca_128": 0.07729794383223465
+      },
+      "YALE": {
+        "n_subjects": 4,
+        "forecast_h1": {
+          "mean": 1.0031824388543746,
+          "persistence": 0.4311566425209703,
+          "ar1": 0.3846607131719637
+        },
+        "reconstruction_pca_128": 0.05309885182865106
+      }
+    }
+  },
+  "autoencoder": {
+    "epochs_run": 30,
+    "best_epoch": 28,
+    "val_reconstruction_mse": 0.08589718687628169
+  },
+  "full_model": {
+    "epochs_run": 60,
+    "best_epoch": 59,
+    "val": {
+      "forecast_signal": 0.2675021231174469,
+      "forecast_latent": 0.4391633629798889,
+      "reconstruction": 0.1808416336774826,
+      "forecast": 0.31141846179962157,
+      "total": 0.4922600984573364,
+      "forecast_mse_1tr": 0.2678928394757612
+    },
+    "test": {
+      "forecast_signal": 0.27040947079658506,
+      "forecast_latent": 0.43897626996040345,
+      "reconstruction": 0.18154057264328002,
+      "forecast": 0.31430708765983584,
+      "total": 0.4958476543426514,
+      "forecast_mse_1tr": 0.2722538638475411
+    },
+    "val_reconstruction_mse": 0.18158324905144585
+  },
+  "cross_tr": {
+    "n_subjects": 349,
+    "n_windows": 722,
+    "model_forecast_mse_1tr": 0.33467489698708164,
+    "ar1_forecast_mse_1tr": 0.46141864524469023,
+    "per_site": {
+      "KKI": {
+        "n_subjects": 33,
+        "forecast_h1": {
+          "mean": 1.004456222402943,
+          "persistence": 0.6976615250067336,
+          "ar1": 0.5925340516694236
+        },
+        "reconstruction_pca_128": 0.07964465112215842
+      },
+      "LEUVEN_1": {
+        "n_subjects": 28,
+        "forecast_h1": {
+          "mean": 1.0024686739494046,
+          "persistence": 0.29633492501728853,
+          "ar1": 0.2798954079356371
+        },
+        "reconstruction_pca_128": 0.0632982834989318
+      },
+      "LEUVEN_2": {
+        "n_subjects": 28,
+        "forecast_h1": {
+          "mean": 1.0023905968126747,
+          "persistence": 0.30546391608353046,
+          "ar1": 0.28694770509857076
+        },
+        "reconstruction_pca_128": 0.06480717443859653
+      },
+      "MAX_MUN": {
+        "n_subjects": 46,
+        "forecast_h1": {
+          "mean": 1.0048143377230987,
+          "persistence": 0.9029684945390989,
+          "ar1": 0.7521584446243377
+        },
+        "reconstruction_pca_128": 0.08701058829098876
+      },
+      "OHSU": {
+        "n_subjects": 25,
+        "forecast_h1": {
+          "mean": 1.0061468754489513,
+          "persistence": 0.7757430657559052,
+          "ar1": 0.6534428310263736
+        },
+        "reconstruction_pca_128": 0.06423202174990975
+      },
+      "OLIN": {
+        "n_subjects": 28,
+        "forecast_h1": {
+          "mean": 1.0028642190635408,
+          "persistence": 0.2689267474589845,
+          "ar1": 0.25861175319387686
+        },
+        "reconstruction_pca_128": 0.07728049924832178
+      },
+      "PITT": {
+        "n_subjects": 50,
+        "forecast_h1": {
+          "mean": 1.002990992572983,
+          "persistence": 0.2565294808124424,
+          "ar1": 0.24891057241158393
+        },
+        "reconstruction_pca_128": 0.07341773276747168
+      },
+      "SBL": {
+        "n_subjects": 26,
+        "forecast_h1": {
+          "mean": 1.0030178544097825,
+          "persistence": 0.48440095456074633,
+          "ar1": 0.42616869893926185
+        },
+        "reconstruction_pca_128": 0.07171490530214457
+      },
+      "UCLA_1": {
+        "n_subjects": 64,
+        "forecast_h1": {
+          "mean": 1.00531405126532,
+          "persistence": 0.9245089468445965,
+          "ar1": 0.7692512308517916
+        },
+        "reconstruction_pca_128": 0.06931567571523652
+      },
+      "UCLA_2": {
+        "n_subjects": 21,
+        "forecast_h1": {
+          "mean": 1.00450721376161,
+          "persistence": 0.9363933166076581,
+          "ar1": 0.7785289049091982
+        },
+        "reconstruction_pca_128": 0.065066042133811
+      }
+    }
+  }
+}
