@@ -1,0 +1,202 @@
+{
+  "CALTECH": {
+    "n_timepoints": 146,
+    "source_subject": "Caltech_0051461",
+    "tr_seconds": 2.0,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "CMU": {
+    "n_timepoints": 236,
+    "source_subject": "CMU_a_0050642",
+    "tr_seconds": 2.0,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "KKI": {
+    "n_timepoints": 152,
+    "source_subject": "KKI_0050772",
+    "tr_seconds": 2.5,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "LEUVEN_1": {
+    "n_timepoints": 246,
+    "source_subject": "Leuven_1_0050682",
+    "tr_seconds": 1.6667,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "LEUVEN_2": {
+    "n_timepoints": 246,
+    "source_subject": "Leuven_2_0050722",
+    "tr_seconds": 1.6519,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "MAX_MUN": {
+    "n_timepoints": 116,
+    "source_subject": "MaxMun_a_0051318",
+    "tr_seconds": 3.0,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "NYU": {
+    "n_timepoints": 176,
+    "source_subject": "NYU_0050952",
+    "tr_seconds": 2.0,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "OHSU": {
+    "n_timepoints": 78,
+    "source_subject": "OHSU_0050142",
+    "tr_seconds": 2.5,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "OLIN": {
+    "n_timepoints": 206,
+    "source_subject": "Olin_0050102",
+    "tr_seconds": 1.5,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "PITT": {
+    "n_timepoints": 196,
+    "source_subject": "Pitt_0050003",
+    "tr_seconds": 1.5,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "SBL": {
+    "n_timepoints": 196,
+    "source_subject": "SBL_0051556",
+    "tr_seconds": 2.2,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "SDSU": {
+    "n_timepoints": 176,
+    "source_subject": "SDSU_0050182",
+    "tr_seconds": 2.0,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "STANFORD": {
+    "n_timepoints": 176,
+    "source_subject": "Stanford_0051161",
+    "tr_seconds": 2.0,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "TRINITY": {
+    "n_timepoints": 146,
+    "source_subject": "Trinity_0050232",
+    "tr_seconds": 2.0,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "UCLA_1": {
+    "n_timepoints": 116,
+    "source_subject": "UCLA_1_0051201",
+    "tr_seconds": 3.0,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "UCLA_2": {
+    "n_timepoints": 116,
+    "source_subject": "UCLA_2_0051291",
+    "tr_seconds": 3.0,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "UM_1": {
+    "n_timepoints": 296,
+    "source_subject": "UM_1_0050272",
+    "tr_seconds": 2.0,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "UM_2": {
+    "n_timepoints": 296,
+    "source_subject": "UM_2_0050382",
+    "tr_seconds": 2.0,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "USM": {
+    "n_timepoints": 236,
+    "source_subject": "USM_0050433",
+    "tr_seconds": 2.0,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  },
+  "YALE": {
+    "n_timepoints": 196,
+    "source_subject": "Yale_0050551",
+    "tr_seconds": 2.0,
+    "voxel_size_mm": [
+      3.0,
+      3.0,
+      3.0
+    ]
+  }
+}
