@@ -10,8 +10,11 @@ venv/
 env/
 
 # Data & artifacts (never commit fMRI data or checkpoints)
-data/
+# Anchored with a leading slash: an unanchored `data/` would also ignore the
+# `src/foundational_brain/data/` source package.
+/data/
 checkpoints/
+figures/
 *.nii
 *.nii.gz
 *.h5
