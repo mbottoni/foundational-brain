@@ -7,8 +7,15 @@ name = "foundational-brain"
 version = "0.0.1"
 description = "A self-supervised foundation model for fMRI: encoder + latent RNN dynamics + decoder"
 readme = "README.md"
-requires-python = ">=3.10"
+# 3.12 is the tested target; 3.14 currently has no torch wheels.
+requires-python = ">=3.10,<3.14"
 license = { text = "MIT" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+# src layout: make `import foundational_brain` work without an editable install
+# or a manually exported PYTHONPATH.
+pythonpath = ["src"]
+testpaths = ["tests"]
