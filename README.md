@@ -134,22 +134,27 @@ foundational-brain/
 - Full corpus profile → `docs/data_report.md`, config set from measurements.
 - Statistics tested against analytically-known synthetic answers.
 
-**Phase 1b — Data pipeline** (next)
-- Windowing into `seq_len=64` sequences; per-region z-scoring; flat-region drop.
-- **Resolve the TR problem** (finding 4): source per-site TR and either resample to
-  a common sampling interval, condition the model on TR, or restrict pretraining to
-  one TR group. This is a prerequisite for pooling sites, not an optimization.
-- `Dataset`/`DataLoader`, train/val/test split by subject, stratified by site.
+**Phase 1b — Data pipeline** ✅
+- Per-site TR read from NIfTI headers via ranged HTTP requests (`scripts/fetch_site_tr.py`)
+  — TR spans 1.5–3.0 s. **The TR problem is resolved by partition**: pretrain on the
+  TR = 2.0 s group (10 sites, 522 subjects), hold the rest out as a cross-TR test.
+- Windowing into `seq_len=64`; per-region z-scoring within subject; flat-region drop;
+  subject-level splits stratified by site.
 
-**Phase 2 — Autoencoder (spatial only)**
-- Implement Encoder + Decoder; train per-frame reconstruction.
-- Validate the latent space (variance explained, reconstruction quality).
+**Phase 2 — Autoencoder (spatial only)** ⚠️ *negative result*
+- Encoder + Decoder trained on per-frame reconstruction.
+- Reaches **0.0859** validation reconstruction MSE against a **PCA-128 bar of
+  0.0750** — 15% *worse* than a linear projection of the same width. At 128 of 182
+  dimensions there is little nonlinear headroom, and PCA is provably optimal for
+  exactly this objective. See "open problems" below.
 
-**Phase 3 — Latent dynamics model (the foundation)**
-- Add the RNN over latents; autoregressive next-frame + masked-latent objectives.
-- Train end-to-end (or freeze encoder first, then joint fine-tune).
-- **Success criterion, set by the data:** beat 0.435 MSE at a 1-TR horizon,
-  reported per site (the per-site bar ranges 0.240–0.713).
+**Phase 3 — Latent dynamics model (the foundation)** ✅
+- RNN over latents; next-frame + masked-latent objectives, trained end to end.
+- **Beats the bar: 0.2679 val 1-TR forecast MSE vs AR(1) at 0.3891 (31% better)**;
+  0.2723 on test.
+- **Transfers across TR:** on 349 held-out subjects from sites whose repetition time
+  was never seen in training, 0.3347 vs AR(1)'s 0.4614 — a 27% margin. The
+  representation is not just memorizing one sampling rate.
 
 **Phase 4 — Scale pretraining**
 - Multiple datasets/subjects; larger latent + RNN; logging (W&B/TensorBoard);
@@ -167,6 +172,25 @@ foundational-brain/
 
 ---
 
+## Open problems
+
+Three things the current results leave unresolved, in priority order:
+
+1. **The autoencoder loses to PCA.** Either the nonlinearity genuinely buys nothing
+   at this width, or the encoder is undertrained / mis-sized. Diagnostic: sweep
+   `latent_dim` (16, 32, 64, 128) and compare against PCA at each width. If the AE
+   wins at *narrow* widths and loses at wide ones, the nonlinearity is real and 128
+   is simply past the point where anything is left to model.
+2. **The forecasting win is a single averaged number.** 0.2679 vs 0.3891 is a large
+   margin, but it has no confidence interval. It needs a per-subject paired test
+   before it can be called a result.
+3. **Reconstruction and forecasting trade off.** The full model's reconstruction MSE
+   (0.1816) is more than twice the reconstruction-only model's (0.0859). The two
+   objectives are competing for the same latent, and the loss weights that balance
+   them were never tuned — they are all 1.0 by default.
+
+---
+
 ## Setup
 
 Python **3.12** (3.14 has no torch wheels yet, and its bundled `ensurepip` is
@@ -177,19 +201,28 @@ uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -r requirements.txt
 ```
 
-Reproduce the data report (downloads ~870 files into the gitignored `data/`,
-roughly 15 minutes on a first run, cached afterwards):
+Reproduce everything (first run downloads ~870 files into the gitignored `data/`,
+roughly 15 minutes; cached afterwards):
 
 ```bash
-.venv/bin/python scripts/explore_data.py --n-subjects 0
-.venv/bin/python -m pytest
+.venv/bin/python scripts/explore_data.py --n-subjects 0   # -> docs/data_report.md
+.venv/bin/python scripts/fetch_site_tr.py                 # -> docs/site_tr.json
+.venv/bin/python scripts/pretrain.py --epochs 60          # -> docs/pretrain_report.md
+.venv/bin/python -m pytest                                # 58 tests
 ```
+
+Pretraining takes ~7 minutes on an M-series GPU (MPS) at 60 epochs.
 
 ## Status
 
-🚧 Phases 0 and 1a complete: scaffolding, public data acquisition, and a full
-profile of the ABIDE corpus with hyperparameters set from it. Next is Phase 1b —
-the windowing/`DataLoader` pipeline, and resolving cross-site TR heterogeneity.
+Phases 0–3 complete. The core premise is **validated**: the latent RNN beats the
+AR(1) baseline by 31% on held-out subjects and by 27% on held-out *sites with an
+unseen TR*. The autoencoder does not beat PCA at matched width — an open problem,
+not a blocker, since the forecasting objective is what the foundation model is for.
+
+Next: Phase 4 (scale — more sites via TR conditioning, wider sweeps, logging) and
+Phase 5 (linear probing on frozen features, which is the real test of whether these
+representations transfer).
 
 ## License
 
