@@ -1,3 +1,7 @@
+# Python 3.12 is the supported target — 3.14 has no torch wheels yet and its
+# stdlib venv/ensurepip is broken on this Homebrew build. Create the env with:
+#   uv venv --python 3.12 .venv && uv pip install -r requirements.txt
+
 # Core
 numpy
 scipy
@@ -11,6 +15,7 @@ nilearn
 pyyaml
 pandas
 scikit-learn
+matplotlib
 tqdm
 tensorboard
 
