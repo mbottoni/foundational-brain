@@ -225,6 +225,40 @@ def connectivity(series: list[np.ndarray]) -> dict:
     }
 
 
+def group_profile(series: list[np.ndarray], groups: list, max_lag: int = 5) -> dict:
+    """Per-group temporal profile — the check that pooling is even legitimate.
+
+    Autocorrelation is indexed in *samples*, not seconds, so it is only
+    comparable across subjects sampled at the same TR. ABIDE pools 20 sites
+    with different TRs, which makes a corpus-wide ACF an average over
+    incompatible time axes. This breaks the profile out per group so that
+    heterogeneity is visible instead of averaged away.
+
+    ``acf2_over_acf1_sq`` is a shape diagnostic: an AR(1) process satisfies
+    ``acf(2) == acf(1)**2``, so a ratio far from 1.0 says the dynamics are not
+    first-order Markov and a one-step AR baseline understates what a model with
+    memory could achieve.
+    """
+    groups = np.asarray(groups)
+    out = {}
+    for g in np.unique(groups):
+        idx = np.where(groups == g)[0]
+        sub = [series[i] for i in idx]
+        acf = autocorrelation(sub, max_lag=max_lag)
+        lengths = np.array([x.shape[0] for x in sub])
+        out[str(g)] = {
+            "n_subjects": int(len(sub)),
+            "T_median": float(np.median(lengths)),
+            "acf": acf.tolist(),
+            "ar1_median": float(np.median(ar1_coefficients(sub))),
+            "acf2_over_acf1_sq": float(acf[2] / max(acf[1] ** 2, 1e-9))
+            if max_lag >= 2
+            else float("nan"),
+            "baseline_ar1_mse": forecast_baselines(sub, horizon=1)["ar1"]["mean"],
+        }
+    return out
+
+
 def variance_partition(series: list[np.ndarray], groups: list) -> dict:
     """Fraction of frame variance explained by group identity (e.g. scan site).
 
