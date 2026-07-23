@@ -1,0 +1,33 @@
+{
+  "ar1_bar": 0.3890575011009002,
+  "results": [
+    {
+      "w_reconstruction": 0.0,
+      "val_forecast_mse_1tr": 0.3303217385961022,
+      "val_reconstruction_mse": 1.5605992098756185,
+      "beats_ar1": true,
+      "epochs_run": 40
+    },
+    {
+      "w_reconstruction": 0.1,
+      "val_forecast_mse_1tr": 0.3537993205783859,
+      "val_reconstruction_mse": 0.3504840885614552,
+      "beats_ar1": true,
+      "epochs_run": 40
+    },
+    {
+      "w_reconstruction": 0.3,
+      "val_forecast_mse_1tr": 0.3463578875812918,
+      "val_reconstruction_mse": 0.289611074337481,
+      "beats_ar1": true,
+      "epochs_run": 40
+    },
+    {
+      "w_reconstruction": 1.0,
+      "val_forecast_mse_1tr": 0.3085256137711495,
+      "val_reconstruction_mse": 0.2073620390459081,
+      "beats_ar1": true,
+      "epochs_run": 40
+    }
+  ]
+}
