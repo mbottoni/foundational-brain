@@ -141,12 +141,12 @@ foundational-brain/
 - Windowing into `seq_len=64`; per-region z-scoring within subject; flat-region drop;
   subject-level splits stratified by site.
 
-**Phase 2 — Autoencoder (spatial only)** ⚠️ *negative result*
+**Phase 2 — Autoencoder (spatial only)** ⚠️ *negative result, now explained*
 - Encoder + Decoder trained on per-frame reconstruction.
 - Reaches **0.0859** validation reconstruction MSE against a **PCA-128 bar of
-  0.0750** — 15% *worse* than a linear projection of the same width. At 128 of 182
-  dimensions there is little nonlinear headroom, and PCA is provably optimal for
-  exactly this objective. See "open problems" below.
+  0.0750**. The `latent_dim` sweep (`docs/latent_sweep_report.md`) shows PCA wins at
+  *every* width 8–128 — the spatial map is essentially linear. The encoder's value
+  is not here; it is in feeding the dynamics core (Phase 3).
 
 **Phase 3 — Latent dynamics model (the foundation)** ✅
 - RNN over latents; next-frame + masked-latent objectives, trained end to end.
@@ -179,11 +179,14 @@ foundational-brain/
 
 Three things the current results leave unresolved, in priority order:
 
-1. **The autoencoder loses to PCA.** Either the nonlinearity genuinely buys nothing
-   at this width, or the encoder is undertrained / mis-sized. Diagnostic: sweep
-   `latent_dim` (16, 32, 64, 128) and compare against PCA at each width. If the AE
-   wins at *narrow* widths and loses at wide ones, the nonlinearity is real and 128
-   is simply past the point where anything is left to model.
+1. ~~**The autoencoder loses to PCA.**~~ *Resolved (`docs/latent_sweep_report.md`):*
+   PCA wins at **every** width from 8 to 128, gap growing 0.7% → 10%. The nonlinear
+   encoder earns nothing for pure reconstruction — expected, given the data report's
+   near-zero skew/kurtosis (ROI frames are close to linearly structured). The useful
+   consequence is a clean decomposition: **the spatial map is ~linear, and the
+   model's entire advantage over baselines comes from the RNN's temporal modeling.**
+   Phase 6 should try a linear/PCA-initialized encoder and spend capacity on the
+   dynamics core.
 2. ~~**The forecasting win is a single averaged number.**~~ *Resolved:* the paired
    per-subject test gives a 100% win rate on both splits with *p* = 3.5e-10.
 3. **Reconstruction and forecasting trade off.** The full model's reconstruction MSE
