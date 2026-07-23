@@ -177,7 +177,11 @@ foundational-brain/
 
 ## Open problems
 
-Three things the current results leave unresolved, in priority order:
+All three open problems from the first pretraining run are now **resolved** — the
+records are kept below because two of the answers were surprising and shape the next
+phases. The through-line: the spatial map is linear (a PCA-equivalent bottleneck),
+and the model's value is entirely in temporal dynamics, where reconstruction turns
+out to be a helpful auxiliary rather than a competitor.
 
 1. ~~**The autoencoder loses to PCA.**~~ *Resolved (`docs/latent_sweep_report.md`):*
    PCA wins at **every** width from 8 to 128, gap growing 0.7% → 10%. The nonlinear
@@ -189,10 +193,13 @@ Three things the current results leave unresolved, in priority order:
    dynamics core.
 2. ~~**The forecasting win is a single averaged number.**~~ *Resolved:* the paired
    per-subject test gives a 100% win rate on both splits with *p* = 3.5e-10.
-3. **Reconstruction and forecasting trade off.** The full model's reconstruction MSE
-   (0.1816) is more than twice the reconstruction-only model's (0.0859). The two
-   objectives are competing for the same latent, and the loss weights that balance
-   them were never tuned — they are all 1.0 by default.
+3. ~~**Reconstruction and forecasting trade off.**~~ *Resolved
+   (`docs/loss_weight_sweep_report.md`), against my expectation.* I expected
+   down-weighting reconstruction to free the latent for forecasting. The opposite is
+   true: forecast MSE is **best at `w_reconstruction=1.0`** (0.3085) and degrades as
+   reconstruction is down-weighted (0.354 at 0.1). Reconstruction is a helpful
+   auxiliary task that regularizes the latent, not a competitor. The default 1:1:1 is
+   validated, not changed.
 
 ---
 
