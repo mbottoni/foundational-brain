@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import pandas as pd
 
 from .dataset import WindowedFMRIDataset, build_datasets, normalize_subject
 from .download import load_abide_series
@@ -34,6 +35,11 @@ class PretrainData:
     n_regions: int
     held_out_series: list[np.ndarray]             # cross-TR subjects (masked, raw scale)
     held_out_sites: list[str]
+    # phenotypic rows aligned to split_series / held_out_series ordering, for
+    # downstream probing (subject id, age, DX group, sex). None-free by design:
+    # the loader already filtered these to the kept subjects.
+    split_phenotypic: dict[str, "pd.DataFrame"]
+    held_out_phenotypic: "pd.DataFrame"
 
     def held_out_normalized(self) -> list[np.ndarray]:
         return [normalize_subject(s) for s in self.held_out_series]
@@ -66,6 +72,7 @@ def prepare_pretrain_data(
 
     group_series = [series[i] for i in in_group]
     group_sites = [sites[i] for i in in_group]
+    group_pheno = pheno.iloc[in_group].reset_index(drop=True)
 
     datasets, splits, keep = build_datasets(
         group_series, group_sites, seq_len=seq_len, stride=stride,
@@ -77,9 +84,13 @@ def prepare_pretrain_data(
     norm = [normalize_subject(s[:, keep]) for s in group_series]
     split_series = {k: [norm[i] for i in idx] for k, idx in splits.items()}
     split_sites = {k: [group_sites[i] for i in idx] for k, idx in splits.items()}
+    split_phenotypic = {
+        k: group_pheno.iloc[idx].reset_index(drop=True) for k, idx in splits.items()
+    }
 
     held_out_series = [series[i][:, keep] for i in held_out]
     held_out_sites = [sites[i] for i in held_out]
+    held_out_phenotypic = pheno.iloc[held_out].reset_index(drop=True)
 
     if verbose:
         print(
@@ -96,4 +107,6 @@ def prepare_pretrain_data(
         n_regions=n_regions,
         held_out_series=held_out_series,
         held_out_sites=held_out_sites,
+        split_phenotypic=split_phenotypic,
+        held_out_phenotypic=held_out_phenotypic,
     )
