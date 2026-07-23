@@ -129,7 +129,7 @@
   "autoencoder": {
     "epochs_run": 30,
     "best_epoch": 28,
-    "val_reconstruction_mse": 0.08589718687628169
+    "val_reconstruction_mse": 0.08650968734625858
   },
   "full_model": {
     "epochs_run": 60,
@@ -248,6 +248,34 @@
         },
         "reconstruction_pca_128": 0.065066042133811
       }
+    }
+  },
+  "paired_vs_ar1": {
+    "val": {
+      "n_subjects": 52,
+      "mean_model_mse": 0.2679367611051832,
+      "mean_baseline_mse": 0.393910204616371,
+      "mean_improvement": 0.1259734435111877,
+      "median_improvement": 0.12269685950556458,
+      "relative_improvement": 0.3198024372937309,
+      "win_rate": 1.0,
+      "ci95_low": 0.11521191617474189,
+      "ci95_high": 0.13635959131102893,
+      "ci_excludes_zero": true,
+      "wilcoxon_p": 3.5038649642082634e-10
+    },
+    "test": {
+      "n_subjects": 51,
+      "mean_model_mse": 0.27254126129061845,
+      "mean_baseline_mse": 0.40218816856153883,
+      "mean_improvement": 0.12964690727092035,
+      "median_improvement": 0.1261258245310966,
+      "relative_improvement": 0.32235385673977895,
+      "win_rate": 1.0,
+      "ci95_low": 0.11815842267162611,
+      "ci95_high": 0.1412058260222744,
+      "ci_excludes_zero": true,
+      "wilcoxon_p": 5.145276051717655e-10
     }
   }
 }

@@ -17,13 +17,22 @@ Reconstruction bar: PCA-128 at **0.0750**.
 
 ## Phase 2 — autoencoder
 
-Validation reconstruction MSE **0.0859**, **does NOT beat** the bar (-14.5% vs 0.0750).
+Validation reconstruction MSE **0.0865**, **does NOT beat** the bar (-15.3% vs 0.0750).
 
 ## Phase 3 — full model
 
 Validation 1-TR forecast MSE **0.2679**, **beats** the bar (+31.1% vs 0.3891).
 Test 1-TR forecast MSE **0.2723**.
 Validation reconstruction MSE 0.1816.
+
+### Per-subject paired test vs AR(1)
+
+The unit is the subject, not the window; the bootstrap resamples subjects. Win rate is shown alongside the mean so a result carried by a few outliers would be visible.
+
+| split | n | model | AR(1) | improvement | win rate | 95% CI | p |
+|---|---|---|---|---|---|---|---|
+| val | 52 | 0.2679 | 0.3939 | +32.0% | 100.0% | [0.1152, 0.1364] | 3.50e-10 |
+| test | 51 | 0.2725 | 0.4022 | +32.2% | 100.0% | [0.1182, 0.1412] | 5.15e-10 |
 
 ## Cross-TR generalization (held-out sites)
 
