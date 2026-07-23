@@ -19,6 +19,22 @@ model produce general-purpose representations that transfer to downstream tasks
 
 ---
 
+## See it in one minute
+
+**▶ [Interactive visual explainer](https://claude.ai/code/artifact/f0b8d110-6759-45fe-bc11-9b484f62d458)** —
+a layman-friendly, animated walkthrough: what the model predicts, and honestly what
+it did and didn't learn. All animations are driven by real data, not mock-ups.
+
+The three GIFs below are generated from actual ABIDE scans and the trained model
+(`python scripts/make_visuals.py`):
+
+| A brain in motion | Predicting the next moment | Its path through state space |
+|:---:|:---:|:---:|
+| ![brain activity](docs/assets/brain_activity.gif) | ![forecasting](docs/assets/forecast.gif) | ![latent trajectory](docs/assets/latent_trajectory.gif) |
+| fMRI = a flickering movie of ~200 regions | red = the model's genuine one-step-ahead guess | each point is one whole-brain state, in 2-D |
+
+---
+
 ## Why this design
 
 - **Encoder / Decoder** decouple *what a brain state looks like* (spatial structure)
