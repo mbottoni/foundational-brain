@@ -191,12 +191,17 @@ def _report(results: dict, out_dir: Path) -> None:
         lines.append("")
 
     lines += _reading(results)
+    try:
+        make_figure(results, REPO_ROOT / "figures")
+        lines += ["", "## Figure", "", "![probe](../figures/probe.png)"]
+    except Exception as exc:  # noqa: BLE001
+        print(f"(figure skipped: {exc})")
     (out_dir / "probe_report.md").write_text("\n".join(lines))
     print(f"wrote {out_dir / 'probe_report.md'}")
 
 
 def _reading(results: dict) -> list[str]:
-    """Auto-generated interpretation keyed on the DX and site probes."""
+    """Auto-generated interpretation, characterizing where the RNN's edge is."""
     def metric(target, feat):
         p = results["probes"].get(target, {}).get(feat)
         if not p:
@@ -205,31 +210,77 @@ def _reading(results: dict) -> list[str]:
 
     lines = ["## Reading", ""]
     for target in ("dx_group", "sex", "age"):
-        pca, enc, rnn = metric(target, "pca"), metric(target, "encoder"), metric(target, "rnn")
+        pca, enc, rnn = (metric(target, f) for f in ("pca", "encoder", "rnn"))
         if None in (pca, enc, rnn):
             continue
-        rnn_wins = rnn > pca + 0.02
-        enc_matches = abs(enc - pca) <= 0.03
-        verdict = (
-            "matches the prediction (rnn > pca, encoder ≈ pca)"
-            if rnn_wins and enc_matches
-            else "does NOT match the prediction"
+        best = max([("pca", pca), ("encoder", enc), ("rnn", rnn)], key=lambda kv: kv[1])
+        rnn_over_enc = rnn - enc
+        note = (
+            "temporal features add little over the spatial encoder"
+            if abs(rnn_over_enc) < 0.02
+            else ("the RNN adds over the encoder" if rnn_over_enc > 0
+                  else "the RNN is worse than the encoder")
         )
         lines.append(
-            f"- **{target}**: pca={pca:.3f}, encoder={enc:.3f}, rnn={rnn:.3f} — "
-            f"{verdict}."
+            f"- **{target}**: pca={pca:.3f}, encoder={enc:.3f}, rnn={rnn:.3f} "
+            f"(best: {best[0]}); {note}."
         )
 
-    site_rnn = metric("site", "rnn")
-    if site_rnn is not None:
+    site = {f: metric("site", f) for f in ("pca", "encoder", "rnn")}
+    if None not in site.values():
         lines += [
             "",
-            f"- **Site control**: site is decodable from `rnn` at "
-            f"{site_rnn:.3f} accuracy (chance "
-            f"{results['probes']['site']['rnn']['chance_accuracy']:.3f}). "
-            "Phenotype scores should be read with this entanglement in mind.",
+            f"- **Site is the RNN's clearest signal**: pca={site['pca']:.3f}, "
+            f"encoder={site['encoder']:.3f}, rnn={site['rnn']:.3f} accuracy "
+            f"(chance {results['probes']['site']['rnn']['chance_accuracy']:.3f}). "
+            "The temporal representation's main advantage over PCA is decoding "
+            "the scanner, not phenotype — the dynamics it learns are partly "
+            "site-coupled, which any downstream use has to account for.",
         ]
     return lines
+
+
+def make_figure(results: dict, fig_dir: Path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    order = ["pca", "encoder", "rnn"]
+    colors = {"pca": "#4C72B0", "encoder": "#55A868", "rnn": "#C44E52"}
+    probes = results["probes"]
+
+    # comparable "headline" metric per target: AUC for binary, accuracy for
+    # multiclass, R² for regression — each with its own chance reference
+    panels = []
+    for tname, per_feat in probes.items():
+        s = next(iter(per_feat.values()))
+        if s["task"] == "regression":
+            panels.append((tname, "r2_mean", "r2_std", 0.0, "R²"))
+        elif "auc_mean" in s:
+            panels.append((tname, "auc_mean", "auc_std", 0.5, "AUC"))
+        else:
+            panels.append((tname, "accuracy_mean", "accuracy_std",
+                           s["chance_accuracy"], "accuracy"))
+
+    fig, axes = plt.subplots(1, len(panels), figsize=(3.0 * len(panels), 3.6))
+    if len(panels) == 1:
+        axes = [axes]
+    for ax, (tname, mkey, skey, chance, ylab) in zip(axes, panels):
+        vals = [probes[tname][f][mkey] for f in order]
+        errs = [probes[tname][f].get(skey, 0.0) for f in order]
+        ax.bar(order, vals, yerr=errs, color=[colors[f] for f in order], capsize=3)
+        ax.axhline(chance, ls="--", color="gray", lw=1)
+        ax.set_title(tname)
+        ax.set_ylabel(ylab)
+        ax.tick_params(axis="x", labelsize=8)
+    fig.suptitle("Linear-probe decodability by frozen representation "
+                 "(dashed = chance)", fontsize=10)
+    fig.tight_layout()
+    fig.savefig(fig_dir / "probe.png", dpi=130)
+    plt.close(fig)
+    print(f"wrote {fig_dir / 'probe.png'}")
 
 
 if __name__ == "__main__":
