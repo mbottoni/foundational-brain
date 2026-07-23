@@ -1,0 +1,125 @@
+{
+  "n_subjects": 522,
+  "fc_components": 100,
+  "probes": {
+    "dx_group": {
+      "raw_fc": {
+        "task": "classification",
+        "n_classes": 2,
+        "n_samples": 522,
+        "chance_accuracy": 0.5478927203065134,
+        "accuracy_mean": 0.681978021978022,
+        "accuracy_std": 0.03960528593601086,
+        "auc_mean": 0.7620056806236672,
+        "auc_std": 0.04139271891382185
+      },
+      "encoder_fc": {
+        "task": "classification",
+        "n_classes": 2,
+        "n_samples": 522,
+        "chance_accuracy": 0.5478927203065134,
+        "accuracy_mean": 0.6744139194139194,
+        "accuracy_std": 0.05134714602255197,
+        "auc_mean": 0.7387106185615665,
+        "auc_std": 0.05008414719978255
+      },
+      "rnn_fc": {
+        "task": "classification",
+        "n_classes": 2,
+        "n_samples": 522,
+        "chance_accuracy": 0.5478927203065134,
+        "accuracy_mean": 0.6878021978021979,
+        "accuracy_std": 0.04678415036708386,
+        "auc_mean": 0.7341424146082987,
+        "auc_std": 0.04444225791527827
+      }
+    },
+    "sex": {
+      "raw_fc": {
+        "task": "classification",
+        "n_classes": 2,
+        "n_samples": 522,
+        "chance_accuracy": 0.8065134099616859,
+        "accuracy_mean": 0.7816117216117215,
+        "accuracy_std": 0.022968770929329217,
+        "auc_mean": 0.7787753768173935,
+        "auc_std": 0.02449244123328153
+      },
+      "encoder_fc": {
+        "task": "classification",
+        "n_classes": 2,
+        "n_samples": 522,
+        "chance_accuracy": 0.8065134099616859,
+        "accuracy_mean": 0.7031318681318682,
+        "accuracy_std": 0.036232939155674986,
+        "auc_mean": 0.7240804321728691,
+        "auc_std": 0.03424204916914546
+      },
+      "rnn_fc": {
+        "task": "classification",
+        "n_classes": 2,
+        "n_samples": 522,
+        "chance_accuracy": 0.8065134099616859,
+        "accuracy_mean": 0.7184249084249084,
+        "accuracy_std": 0.025805685324251183,
+        "auc_mean": 0.708891823396025,
+        "auc_std": 0.05136639249755306
+      }
+    },
+    "site": {
+      "raw_fc": {
+        "task": "classification",
+        "n_classes": 10,
+        "n_samples": 522,
+        "chance_accuracy": 0.32950191570881227,
+        "accuracy_mean": 0.8045970695970697,
+        "accuracy_std": 0.024761498360234342
+      },
+      "encoder_fc": {
+        "task": "classification",
+        "n_classes": 10,
+        "n_samples": 522,
+        "chance_accuracy": 0.32950191570881227,
+        "accuracy_mean": 0.8122161172161171,
+        "accuracy_std": 0.029093658805738384
+      },
+      "rnn_fc": {
+        "task": "classification",
+        "n_classes": 10,
+        "n_samples": 522,
+        "chance_accuracy": 0.32950191570881227,
+        "accuracy_mean": 0.8352564102564102,
+        "accuracy_std": 0.021338293283855052
+      }
+    },
+    "age": {
+      "raw_fc": {
+        "task": "regression",
+        "n_samples": 522,
+        "target_std": 6.743262809609824,
+        "r2_mean": 0.3607883036176238,
+        "r2_std": 0.061790488787919984,
+        "mae_mean": 3.8280802953083346,
+        "mae_std": 0.3395909784437433
+      },
+      "encoder_fc": {
+        "task": "regression",
+        "n_samples": 522,
+        "target_std": 6.743262809609824,
+        "r2_mean": 0.4279360337106076,
+        "r2_std": 0.05932032599026085,
+        "mae_mean": 3.610943683677088,
+        "mae_std": 0.254339783869761
+      },
+      "rnn_fc": {
+        "task": "regression",
+        "n_samples": 522,
+        "target_std": 6.743262809609824,
+        "r2_mean": 0.3686463409044607,
+        "r2_std": 0.049357612329626016,
+        "mae_mean": 3.748556331228665,
+        "mae_std": 0.20724233464892805
+      }
+    }
+  }
+}
