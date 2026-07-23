@@ -21,9 +21,10 @@ model produce general-purpose representations that transfer to downstream tasks
 
 ## See it in one minute
 
-**▶ [Interactive visual explainer](https://claude.ai/code/artifact/f0b8d110-6759-45fe-bc11-9b484f62d458)** —
+**▶ [Open the interactive visual explainer](https://mbottoni.github.io/foundational-brain/)** —
 a layman-friendly, animated walkthrough: what the model predicts, and honestly what
 it did and didn't learn. All animations are driven by real data, not mock-ups.
+Served free via GitHub Pages, straight from this repo (`docs/index.html`).
 
 The three GIFs below are generated from actual ABIDE scans and the trained model
 (`python scripts/make_visuals.py`):
