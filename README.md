@@ -152,6 +152,9 @@ foundational-brain/
 - RNN over latents; next-frame + masked-latent objectives, trained end to end.
 - **Beats the bar: 0.2679 val 1-TR forecast MSE vs AR(1) at 0.3891 (31% better)**;
   0.2723 on test.
+- **Better on 100% of held-out subjects** — val and test both. 95% CI on the mean
+  per-subject improvement [0.115, 0.136], Wilcoxon *p* = 3.5e-10. Not an
+  outlier-carried average.
 - **Transfers across TR:** on 349 held-out subjects from sites whose repetition time
   was never seen in training, 0.3347 vs AR(1)'s 0.4614 — a 27% margin. The
   representation is not just memorizing one sampling rate.
@@ -181,9 +184,8 @@ Three things the current results leave unresolved, in priority order:
    `latent_dim` (16, 32, 64, 128) and compare against PCA at each width. If the AE
    wins at *narrow* widths and loses at wide ones, the nonlinearity is real and 128
    is simply past the point where anything is left to model.
-2. **The forecasting win is a single averaged number.** 0.2679 vs 0.3891 is a large
-   margin, but it has no confidence interval. It needs a per-subject paired test
-   before it can be called a result.
+2. ~~**The forecasting win is a single averaged number.**~~ *Resolved:* the paired
+   per-subject test gives a 100% win rate on both splits with *p* = 3.5e-10.
 3. **Reconstruction and forecasting trade off.** The full model's reconstruction MSE
    (0.1816) is more than twice the reconstruction-only model's (0.0859). The two
    objectives are competing for the same latent, and the loss weights that balance
