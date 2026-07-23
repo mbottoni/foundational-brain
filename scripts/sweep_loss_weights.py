@@ -214,8 +214,11 @@ def make_figure(rows, ar1_bar, fig_dir: Path):
     ax2.set_ylabel("validation reconstruction MSE", color="#4C72B0")
     ax2.tick_params(axis="y", labelcolor="#4C72B0")
 
-    ax1.set_title("Reconstruction weight vs forecasting quality")
-    fig.legend(loc="upper center", ncol=3, fontsize=7, bbox_to_anchor=(0.5, 0.99))
+    ax1.set_title("Reconstruction weight vs forecasting quality", pad=24)
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper center",
+               ncol=3, fontsize=7, bbox_to_anchor=(0.5, 1.13), frameon=False)
     fig.tight_layout()
     fig.savefig(fig_dir / "loss_weight_sweep.png", dpi=130)
     plt.close(fig)
