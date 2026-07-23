@@ -163,13 +163,26 @@ foundational-brain/
 - Multiple datasets/subjects; larger latent + RNN; logging (W&B/TensorBoard);
   checkpointing; mixed precision.
 
-**Phase 5 — Evaluation & transfer**
-- Intrinsic: reconstruction / forecasting error, latent trajectory analysis.
-- Extrinsic (linear probing on frozen features): subject ID, task/state, age, etc.
-- Compare against baselines (PCA, raw-signal models, published fMRI foundation models
-  such as BrainLM).
+**Phase 5 — Evaluation & transfer** ⚠️ *prediction refuted — see `docs/probe_report.md`*
+- Linear probes on frozen features (PCA vs encoder latent vs RNN hidden), 522
+  subjects, regularization cross-validated per fold. Targets: DX group, sex, age, and
+  **site as the confound control**.
+- The ablation predicted the RNN hidden state would carry phenotype where the encoder
+  matched PCA. **It doesn't.** DX group is weakly decodable and equal across all three
+  (AUC ≈ 0.63); for sex and age the *learned* features beat PCA modestly, but the
+  temporal (RNN) part adds nothing over the spatial encoder.
+- **The one clean result is site**: PCA 0.55 < encoder 0.63 < **RNN 0.73** accuracy.
+  The RNN's distinctive information over PCA is largely the **scanner signature**, not
+  biology. The forecasting win is real, but its transferable content under this
+  pooling is more acquisition than phenotype — which reframes what "brain dynamics
+  foundation" means here and motivates the Phase 6 directions below.
 
-**Phase 6 — Extensions**
+**Phase 6 — Extensions** (now prioritized by the Phase 5 finding)
+- **Site-adversarial / site-invariant pretraining** — the probe shows the learned
+  dynamics are scanner-coupled; a gradient-reversal or site-conditioned objective
+  would push the representation toward biology.
+- **Connectivity-based probe features** — mean+std pooling may under-serve phenotype;
+  functional connectivity is the classic ABIDE feature and is a fairer transfer test.
 - Variational / diffusion decoder, voxel-level encoder, state-space (Mamba/S4) latent
   core, cross-subject/cross-scanner generalization.
 
@@ -227,14 +240,21 @@ Pretraining takes ~7 minutes on an M-series GPU (MPS) at 60 epochs.
 
 ## Status
 
-Phases 0–3 complete. The core premise is **validated**: the latent RNN beats the
-AR(1) baseline by 31% on held-out subjects and by 27% on held-out *sites with an
-unseen TR*. The autoencoder does not beat PCA at matched width — an open problem,
-not a blocker, since the forecasting objective is what the foundation model is for.
+Phases 0–3 and 5 complete; the picture is now more honest than "it works":
 
-Next: Phase 4 (scale — more sites via TR conditioning, wider sweeps, logging) and
-Phase 5 (linear probing on frozen features, which is the real test of whether these
-representations transfer).
+- **Forecasting (Phase 3): the premise holds.** The latent RNN beats AR(1) by 31% on
+  held-out subjects (100% win rate) and 27% on held-out sites with an unseen TR. There
+  is real temporal structure and the model captures it.
+- **Spatial map (Phase 2 + ablation): linear.** The encoder never beats PCA at
+  matched width, so the spatial half is essentially a learned PCA.
+- **Transfer (Phase 5): weak for phenotype, strong for scanner.** Frozen-feature
+  probes decode DX group / sex / age only weakly, and the RNN's advantage over PCA is
+  mostly *site*, not biology. The learned dynamics are partly acquisition-coupled.
+
+So the model forecasts well and encodes dynamics, but those dynamics are not yet a
+clean, biology-carrying transfer representation. Next: Phase 4 (scale) and the
+Phase 6 directions the probe motivated — **site-invariant pretraining** and
+**connectivity-based transfer features**.
 
 ## License
 
