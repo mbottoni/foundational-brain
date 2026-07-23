@@ -91,3 +91,70 @@ def all_features(
     feats = model_features(model, series, device)
     feats["pca"] = pca_features(series, train_series, n_components=pca_components)
     return feats
+
+
+# ---------------------------------------------------------------------------
+# connectivity pooling
+# ---------------------------------------------------------------------------
+# Resting-state phenotype signal classically lives in *functional connectivity*
+# — the region-region correlation structure — not in per-region amplitude, which
+# is what mean+std captures. These features test whether the weak phenotype
+# decoding under mean+std pooling was a pooling artifact rather than a genuine
+# absence of signal in the representation.
+
+
+def fc_vector(x: np.ndarray) -> np.ndarray:
+    """Vectorized upper triangle of a ``(T, d)`` series' correlation matrix."""
+    c = np.corrcoef(np.asarray(x, dtype=np.float64).T)
+    c = np.nan_to_num(c)  # constant channels -> 0 correlation, not NaN
+    iu = np.triu_indices(c.shape[0], k=1)
+    return c[iu].astype(np.float32)
+
+
+def _pca_reduce(train_x: np.ndarray, all_x: np.ndarray, n_components: int) -> np.ndarray:
+    """Project ``all_x`` onto a PCA basis fit on ``train_x`` only.
+
+    Connectivity vectors are very high-dimensional (d·(d−1)/2), far more than the
+    subject count, so an unreduced probe would be pure overfitting. The basis is
+    fit on training subjects to keep the reduction honest.
+    """
+    mean = train_x.mean(axis=0)
+    _, _, vt = np.linalg.svd(train_x - mean, full_matrices=False)
+    k = min(n_components, vt.shape[0])
+    comps = vt[:k].T
+    return ((all_x - mean) @ comps).astype(np.float32)
+
+
+@torch.no_grad()
+def representation_fc(model, series: list[np.ndarray], device) -> dict[str, np.ndarray]:
+    """Per-subject functional connectivity of raw / encoder / RNN trajectories."""
+    model.eval()
+    raw, enc, rnn = [], [], []
+    for s in series:
+        raw.append(fc_vector(s))
+        x = torch.from_numpy(np.ascontiguousarray(s)).unsqueeze(0).to(device)
+        z = model.encode(x)
+        _, _, feats = model.latent_rnn(z)
+        enc.append(fc_vector(z[0].cpu().numpy()))
+        rnn.append(fc_vector(feats[0].cpu().numpy()))
+    return {"raw": np.stack(raw), "encoder": np.stack(enc), "rnn": np.stack(rnn)}
+
+
+def connectivity_features(
+    model,
+    series: list[np.ndarray],
+    train_idx: np.ndarray,
+    device,
+    n_components: int = 100,
+) -> dict[str, np.ndarray]:
+    """Connectivity features for each representation, PCA-reduced (train-fit).
+
+    Keys are suffixed ``_fc`` to distinguish them from the mean+std features.
+    """
+    fc = representation_fc(model, series, device)
+    train_mask = np.zeros(len(series), dtype=bool)
+    train_mask[train_idx] = True
+    return {
+        f"{name}_fc": _pca_reduce(mat[train_mask], mat, n_components)
+        for name, mat in fc.items()
+    }
