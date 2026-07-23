@@ -163,26 +163,29 @@ foundational-brain/
 - Multiple datasets/subjects; larger latent + RNN; logging (W&B/TensorBoard);
   checkpointing; mixed precision.
 
-**Phase 5 — Evaluation & transfer** ⚠️ *prediction refuted — see `docs/probe_report.md`*
-- Linear probes on frozen features (PCA vs encoder latent vs RNN hidden), 522
-  subjects, regularization cross-validated per fold. Targets: DX group, sex, age, and
-  **site as the confound control**.
-- The ablation predicted the RNN hidden state would carry phenotype where the encoder
-  matched PCA. **It doesn't.** DX group is weakly decodable and equal across all three
-  (AUC ≈ 0.63); for sex and age the *learned* features beat PCA modestly, but the
-  temporal (RNN) part adds nothing over the spatial encoder.
-- **The one clean result is site**: PCA 0.55 < encoder 0.63 < **RNN 0.73** accuracy.
-  The RNN's distinctive information over PCA is largely the **scanner signature**, not
-  biology. The forecasting win is real, but its transferable content under this
-  pooling is more acquisition than phenotype — which reframes what "brain dynamics
-  foundation" means here and motivates the Phase 6 directions below.
+**Phase 5 — Evaluation & transfer** ✅ *complete, with an honest verdict*
+- Linear probes on frozen features, 522 subjects, regularization CV'd per fold.
+  Targets: DX group, sex, age, and **site as the confound control**. Two poolings:
+  mean+std (`docs/probe_report.md`) and functional connectivity
+  (`docs/probe_connectivity_report.md`).
+- **Pooling mattered more than the representation.** Under mean+std, phenotype looked
+  weak (DX AUC ≈ 0.63). Under connectivity — where resting-state phenotype signal
+  actually lives — it jumps: **DX 0.76, sex 0.78, age R² 0.43**. The weak first result
+  was largely a pooling artifact.
+- **But the model does not beat raw functional connectivity.** For DX and sex,
+  `raw_fc` ≥ the encoder/RNN representations; only **age** shows a model win
+  (encoder_fc R² 0.43 vs raw 0.36). And the RNN stays the *most* site-decodable
+  (0.835). So this forecasting-pretrained model forecasts well but is **not a better
+  phenotype-transfer representation than standard connectivity**, and its distinctive
+  learned structure is largely acquisition — which sets up the Phase 6 directions.
 
-**Phase 6 — Extensions** (now prioritized by the Phase 5 finding)
-- **Site-adversarial / site-invariant pretraining** — the probe shows the learned
-  dynamics are scanner-coupled; a gradient-reversal or site-conditioned objective
-  would push the representation toward biology.
-- **Connectivity-based probe features** — mean+std pooling may under-serve phenotype;
-  functional connectivity is the classic ABIDE feature and is a fairer transfer test.
+**Phase 6 — Extensions** (prioritized by the Phase 5 findings)
+- **Site-adversarial / site-invariant pretraining** — the probes show the learned
+  dynamics are the *most* scanner-decodable of all features (0.835); a gradient-
+  reversal or site-conditioned objective would push the representation toward biology,
+  and the test is whether site-decodability drops while forecasting and phenotype hold.
+- ~~Connectivity-based probe features~~ ✅ done (`docs/probe_connectivity_report.md`):
+  confirmed phenotype is decodable and that the model does not beat raw connectivity.
 - Variational / diffusion decoder, voxel-level encoder, state-space (Mamba/S4) latent
   core, cross-subject/cross-scanner generalization.
 
@@ -247,14 +250,17 @@ Phases 0–3 and 5 complete; the picture is now more honest than "it works":
   is real temporal structure and the model captures it.
 - **Spatial map (Phase 2 + ablation): linear.** The encoder never beats PCA at
   matched width, so the spatial half is essentially a learned PCA.
-- **Transfer (Phase 5): weak for phenotype, strong for scanner.** Frozen-feature
-  probes decode DX group / sex / age only weakly, and the RNN's advantage over PCA is
-  mostly *site*, not biology. The learned dynamics are partly acquisition-coupled.
+- **Transfer (Phase 5): phenotype is decodable, but the model doesn't beat raw
+  connectivity.** With connectivity pooling, DX/sex/age decode well (0.76 / 0.78 /
+  0.43) — but `raw_fc` matches or beats the learned features on all but age, and the
+  RNN remains the most *site*-decodable. Pretraining forecasts well without yielding a
+  better phenotype-transfer representation than standard functional connectivity.
 
 So the model forecasts well and encodes dynamics, but those dynamics are not yet a
-clean, biology-carrying transfer representation. Next: Phase 4 (scale) and the
-Phase 6 directions the probe motivated — **site-invariant pretraining** and
-**connectivity-based transfer features**.
+clean, biology-carrying transfer representation — they are partly acquisition, and
+they don't out-encode connectivity. Next: Phase 4 (scale) and the Phase 6 direction
+the probes most sharply motivated — **site-invariant / adversarial pretraining**, to
+push the learned dynamics off the scanner and toward biology.
 
 ## License
 
