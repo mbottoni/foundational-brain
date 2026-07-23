@@ -40,7 +40,8 @@ from foundational_brain.data.dataset import (  # noqa: E402
     normalize_subject,
 )
 from foundational_brain.data.sites import split_by_tr  # noqa: E402
-from foundational_brain.eval.baselines import evaluate_baselines  # noqa: E402
+from foundational_brain.eval.baselines import evaluate_baselines, fit_ar1  # noqa: E402
+from foundational_brain.eval.compare import compare  # noqa: E402
 from foundational_brain.models import FoundationModel  # noqa: E402
 from foundational_brain.training.losses import SSLObjective  # noqa: E402
 from foundational_brain.training.trainer import (  # noqa: E402
@@ -88,6 +89,50 @@ def build_model(cfg, n_regions: int) -> FoundationModel:
         rnn_type=m["rnn"]["type"],
         rnn_dropout=m["rnn"]["dropout"],
     )
+
+
+@torch.no_grad()
+def per_subject_forecast_mse(model, series, seq_len, batch_size, device) -> np.ndarray:
+    """One-step forecast MSE for each subject separately.
+
+    Evaluated one subject at a time so the result pairs with the AR(1) number
+    for the same subject — the unit of the significance test is the subject,
+    not the window.
+    """
+    model.eval()
+    out = np.zeros(len(series), dtype=np.float64)
+    for i, s in enumerate(series):
+        ds = WindowedFMRIDataset([s], seq_len=seq_len, stride=seq_len, normalize=False)
+        if len(ds) == 0:
+            out[i] = np.nan
+            continue
+        err, count = 0.0, 0
+        for batch in DataLoader(ds, batch_size=batch_size):
+            x = batch["x"].to(device)
+            pred = model(x)["x_next_pred"][:, :-1]
+            err += float(((pred - x[:, 1:]) ** 2).sum())
+            count += x[:, 1:].numel()
+        out[i] = err / max(count, 1)
+    return out
+
+
+def per_subject_ar1_mse(series, rho, seq_len) -> np.ndarray:
+    """AR(1) forecast MSE per subject, over the same windows the model saw."""
+    out = np.zeros(len(series), dtype=np.float64)
+    for i, s in enumerate(series):
+        x = np.asarray(s, np.float64)
+        n_full = (len(x) // seq_len) * seq_len  # match the windowing exactly
+        if n_full < 2:
+            out[i] = np.nan
+            continue
+        err, count = 0.0, 0
+        for start in range(0, n_full, seq_len):
+            w = x[start : start + seq_len]
+            pred, true = rho * w[:-1], w[1:]
+            err += float(((true - pred) ** 2).sum())
+            count += true.size
+        out[i] = err / max(count, 1)
+    return out
 
 
 @torch.no_grad()
@@ -202,6 +247,24 @@ def main() -> None:
     print(f"\nval  forecast MSE {val_res['forecast_mse_1tr']:.4f}  (AR1 {ar1_bar:.4f})")
     print(f"test forecast MSE {test_res['forecast_mse_1tr']:.4f}")
 
+    # ------------------------------- per-subject significance vs AR(1)
+    rho = fit_ar1(split_series["train"])
+    paired = {}
+    for name in ("val", "test"):
+        m = per_subject_forecast_mse(
+            model, split_series[name], seq_len, batch_size, device
+        )
+        a = per_subject_ar1_mse(split_series[name], rho, seq_len)
+        ok = ~(np.isnan(m) | np.isnan(a))
+        paired[name] = compare(m[ok], a[ok])
+        p = paired[name]
+        print(
+            f"{name}: model {p['mean_model_mse']:.4f} vs AR1 "
+            f"{p['mean_baseline_mse']:.4f}; win rate {p['win_rate']:.1%}; "
+            f"95% CI [{p['ci95_low']:.4f}, {p['ci95_high']:.4f}]; "
+            f"p={p['wilcoxon_p']:.2e}"
+        )
+
     # ------------------------------------------ cross-TR generalization
     cross = None
     if held_out:
@@ -262,6 +325,7 @@ def main() -> None:
             "val_reconstruction_mse": model_recon,
         },
         "cross_tr": cross,
+        "paired_vs_ar1": paired,
     }
     args.out_dir.mkdir(parents=True, exist_ok=True)
     (args.out_dir / "pretrain_results.json").write_text(json.dumps(results, indent=2))
@@ -316,6 +380,27 @@ def fmt_report(r: dict) -> str:
         f"{r['full_model']['val_reconstruction_mse']:.4f}.",
         "",
     ]
+
+    if r.get("paired_vs_ar1"):
+        lines += [
+            "### Per-subject paired test vs AR(1)",
+            "",
+            "The unit is the subject, not the window; the bootstrap resamples "
+            "subjects. Win rate is shown alongside the mean so a result carried "
+            "by a few outliers would be visible.",
+            "",
+            "| split | n | model | AR(1) | improvement | win rate | 95% CI | p |",
+            "|---|---|---|---|---|---|---|---|",
+        ]
+        for split, p in r["paired_vs_ar1"].items():
+            lines.append(
+                f"| {split} | {p['n_subjects']} | {p['mean_model_mse']:.4f} | "
+                f"{p['mean_baseline_mse']:.4f} | "
+                f"{p['relative_improvement']:+.1%} | {p['win_rate']:.1%} | "
+                f"[{p['ci95_low']:.4f}, {p['ci95_high']:.4f}] | "
+                f"{p['wilcoxon_p']:.2e} |"
+            )
+        lines.append("")
 
     if r.get("cross_tr"):
         c = r["cross_tr"]
