@@ -33,13 +33,8 @@ from torch.utils.data import DataLoader
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from foundational_brain.data import load_abide_series  # noqa: E402
-from foundational_brain.data.dataset import (  # noqa: E402
-    WindowedFMRIDataset,
-    build_datasets,
-    normalize_subject,
-)
-from foundational_brain.data.sites import split_by_tr  # noqa: E402
+from foundational_brain.data.dataset import WindowedFMRIDataset  # noqa: E402
+from foundational_brain.data.pipeline import prepare_pretrain_data  # noqa: E402
 from foundational_brain.eval.baselines import evaluate_baselines, fit_ar1  # noqa: E402
 from foundational_brain.eval.compare import compare  # noqa: E402
 from foundational_brain.models import FoundationModel  # noqa: E402
@@ -163,40 +158,13 @@ def main() -> None:
 
     # ---------------------------------------------------------------- data
     n = args.n_subjects if args.n_subjects > 0 else None
-    series, pheno = load_abide_series(
-        n_subjects=n, derivative=cfg["data"]["derivative"]
+    data = prepare_pretrain_data(
+        n_subjects=n, derivative=cfg["data"]["derivative"], seq_len=seq_len, seed=seed
     )
-    sites = [str(s) for s in pheno["SITE_ID"]]
-
-    in_group, held_out = split_by_tr(sites)
-    print(
-        f"loaded {len(series)} subjects; {len(in_group)} in the TR="
-        f"{cfg.get('data', {}).get('pretrain_tr', 2.0)}s pretraining group, "
-        f"{len(held_out)} held out for cross-TR evaluation"
-    )
-
-    group_series = [series[i] for i in in_group]
-    group_sites = [sites[i] for i in in_group]
-
-    datasets, splits, keep = build_datasets(
-        group_series, group_sites, seq_len=seq_len, seed=seed
-    )
+    datasets, splits, keep = data.datasets, data.splits, data.keep
+    split_series, split_sites = data.split_series, data.split_sites
+    n_regions = data.n_regions
     loaders = make_loaders(datasets, batch_size)
-    n_regions = int(keep.sum())
-    print(
-        f"regions kept: {n_regions}; windows "
-        + ", ".join(f"{k}={len(v)}" for k, v in datasets.items())
-    )
-
-    # Normalized per-subject series, matching exactly what the model sees:
-    # mask flat regions FIRST, then normalize. Normalizing the full 200 regions
-    # would score the baselines on 18 regions the model never receives, and
-    # those regions are constant in some subjects — they z-score to zero, which
-    # drags the baseline MSE down and hands it an advantage the model cannot
-    # have. The headline "beats AR(1)" claim depends on this alignment.
-    norm = [normalize_subject(s[:, keep]) for s in group_series]
-    split_series = {k: [norm[i] for i in idx] for k, idx in splits.items()}
-    split_sites = {k: [group_sites[i] for i in idx] for k, idx in splits.items()}
 
     # ----------------------------------------------------------- baselines
     print("\nfitting baselines on train, scoring on val ...")
@@ -267,20 +235,19 @@ def main() -> None:
 
     # ------------------------------------------ cross-TR generalization
     cross = None
-    if held_out:
-        # Apply the *training* region mask, not a freshly computed one: the
-        # model's input width is fixed by training, and recomputing the mask on
-        # held-out subjects yields a different set of regions in a different
-        # order, which would silently feed the model mismatched channels.
-        ho_series = [series[i][:, keep] for i in held_out]
-        ho_sites = [sites[i] for i in held_out]
+    if data.held_out_series:
+        # held_out_series is already masked with the training region mask (see
+        # pipeline.prepare_pretrain_data), so the model receives the same
+        # channels in the same order it was trained on.
+        ho_series = data.held_out_series
+        ho_sites = data.held_out_sites
 
         ho_ds = WindowedFMRIDataset(ho_series, seq_len=seq_len, stride=seq_len)
         ho_loader = DataLoader(ho_ds, batch_size=batch_size)
         ho_res = evaluate(model, ho_loader, obj, device)
         ho_base = evaluate_baselines(
             split_series["train"],
-            [normalize_subject(s) for s in ho_series],
+            data.held_out_normalized(),
             eval_sites=ho_sites,
             pca_components=cfg["model"]["latent_dim"],
         )
@@ -304,8 +271,7 @@ def main() -> None:
     )
 
     results = {
-        "n_subjects_total": len(series),
-        "n_subjects_pretrain_group": len(in_group),
+        "n_subjects_pretrain_group": sum(len(v) for v in splits.values()),
         "n_regions": n_regions,
         "seq_len": seq_len,
         "latent_dim": cfg["model"]["latent_dim"],
@@ -352,7 +318,7 @@ def fmt_report(r: dict) -> str:
         "# Pretraining report",
         "",
         f"- {r['n_subjects_pretrain_group']} subjects in the TR-homogeneous "
-        f"pretraining group (of {r['n_subjects_total']} total)",
+        f"pretraining group",
         f"- {r['n_regions']} regions, seq_len {r['seq_len']}, "
         f"latent_dim {r['latent_dim']}",
         f"- split subjects: " + ", ".join(f"{k}={v}" for k, v in r["splits"].items()),

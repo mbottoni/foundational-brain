@@ -19,6 +19,23 @@ model produce general-purpose representations that transfer to downstream tasks
 
 ---
 
+## See it in one minute
+
+**▶ [Open the interactive visual explainer](https://mbottoni.github.io/foundational-brain/)** —
+a layman-friendly, animated walkthrough: what the model predicts, and honestly what
+it did and didn't learn. All animations are driven by real data, not mock-ups.
+Served free via GitHub Pages, straight from this repo (`docs/index.html`).
+
+The three GIFs below are generated from actual ABIDE scans and the trained model
+(`python scripts/make_visuals.py`):
+
+| A brain in motion | Predicting the next moment | Its path through state space |
+|:---:|:---:|:---:|
+| ![brain activity](docs/assets/brain_activity.gif) | ![forecasting](docs/assets/forecast.gif) | ![latent trajectory](docs/assets/latent_trajectory.gif) |
+| fMRI = a flickering movie of ~200 regions | red = the model's genuine one-step-ahead guess | each point is one whole-brain state, in 2-D |
+
+---
+
 ## Why this design
 
 - **Encoder / Decoder** decouple *what a brain state looks like* (spatial structure)
@@ -141,12 +158,12 @@ foundational-brain/
 - Windowing into `seq_len=64`; per-region z-scoring within subject; flat-region drop;
   subject-level splits stratified by site.
 
-**Phase 2 — Autoencoder (spatial only)** ⚠️ *negative result*
+**Phase 2 — Autoencoder (spatial only)** ⚠️ *negative result, now explained*
 - Encoder + Decoder trained on per-frame reconstruction.
 - Reaches **0.0859** validation reconstruction MSE against a **PCA-128 bar of
-  0.0750** — 15% *worse* than a linear projection of the same width. At 128 of 182
-  dimensions there is little nonlinear headroom, and PCA is provably optimal for
-  exactly this objective. See "open problems" below.
+  0.0750**. The `latent_dim` sweep (`docs/latent_sweep_report.md`) shows PCA wins at
+  *every* width 8–128 — the spatial map is essentially linear. The encoder's value
+  is not here; it is in feeding the dynamics core (Phase 3).
 
 **Phase 3 — Latent dynamics model (the foundation)** ✅
 - RNN over latents; next-frame + masked-latent objectives, trained end to end.
@@ -163,13 +180,29 @@ foundational-brain/
 - Multiple datasets/subjects; larger latent + RNN; logging (W&B/TensorBoard);
   checkpointing; mixed precision.
 
-**Phase 5 — Evaluation & transfer**
-- Intrinsic: reconstruction / forecasting error, latent trajectory analysis.
-- Extrinsic (linear probing on frozen features): subject ID, task/state, age, etc.
-- Compare against baselines (PCA, raw-signal models, published fMRI foundation models
-  such as BrainLM).
+**Phase 5 — Evaluation & transfer** ✅ *complete, with an honest verdict*
+- Linear probes on frozen features, 522 subjects, regularization CV'd per fold.
+  Targets: DX group, sex, age, and **site as the confound control**. Two poolings:
+  mean+std (`docs/probe_report.md`) and functional connectivity
+  (`docs/probe_connectivity_report.md`).
+- **Pooling mattered more than the representation.** Under mean+std, phenotype looked
+  weak (DX AUC ≈ 0.63). Under connectivity — where resting-state phenotype signal
+  actually lives — it jumps: **DX 0.76, sex 0.78, age R² 0.43**. The weak first result
+  was largely a pooling artifact.
+- **But the model does not beat raw functional connectivity.** For DX and sex,
+  `raw_fc` ≥ the encoder/RNN representations; only **age** shows a model win
+  (encoder_fc R² 0.43 vs raw 0.36). And the RNN stays the *most* site-decodable
+  (0.835). So this forecasting-pretrained model forecasts well but is **not a better
+  phenotype-transfer representation than standard connectivity**, and its distinctive
+  learned structure is largely acquisition — which sets up the Phase 6 directions.
 
-**Phase 6 — Extensions**
+**Phase 6 — Extensions** (prioritized by the Phase 5 findings)
+- **Site-adversarial / site-invariant pretraining** — the probes show the learned
+  dynamics are the *most* scanner-decodable of all features (0.835); a gradient-
+  reversal or site-conditioned objective would push the representation toward biology,
+  and the test is whether site-decodability drops while forecasting and phenotype hold.
+- ~~Connectivity-based probe features~~ ✅ done (`docs/probe_connectivity_report.md`):
+  confirmed phenotype is decodable and that the model does not beat raw connectivity.
 - Variational / diffusion decoder, voxel-level encoder, state-space (Mamba/S4) latent
   core, cross-subject/cross-scanner generalization.
 
@@ -177,19 +210,29 @@ foundational-brain/
 
 ## Open problems
 
-Three things the current results leave unresolved, in priority order:
+All three open problems from the first pretraining run are now **resolved** — the
+records are kept below because two of the answers were surprising and shape the next
+phases. The through-line: the spatial map is linear (a PCA-equivalent bottleneck),
+and the model's value is entirely in temporal dynamics, where reconstruction turns
+out to be a helpful auxiliary rather than a competitor.
 
-1. **The autoencoder loses to PCA.** Either the nonlinearity genuinely buys nothing
-   at this width, or the encoder is undertrained / mis-sized. Diagnostic: sweep
-   `latent_dim` (16, 32, 64, 128) and compare against PCA at each width. If the AE
-   wins at *narrow* widths and loses at wide ones, the nonlinearity is real and 128
-   is simply past the point where anything is left to model.
+1. ~~**The autoencoder loses to PCA.**~~ *Resolved (`docs/latent_sweep_report.md`):*
+   PCA wins at **every** width from 8 to 128, gap growing 0.7% → 10%. The nonlinear
+   encoder earns nothing for pure reconstruction — expected, given the data report's
+   near-zero skew/kurtosis (ROI frames are close to linearly structured). The useful
+   consequence is a clean decomposition: **the spatial map is ~linear, and the
+   model's entire advantage over baselines comes from the RNN's temporal modeling.**
+   Phase 6 should try a linear/PCA-initialized encoder and spend capacity on the
+   dynamics core.
 2. ~~**The forecasting win is a single averaged number.**~~ *Resolved:* the paired
    per-subject test gives a 100% win rate on both splits with *p* = 3.5e-10.
-3. **Reconstruction and forecasting trade off.** The full model's reconstruction MSE
-   (0.1816) is more than twice the reconstruction-only model's (0.0859). The two
-   objectives are competing for the same latent, and the loss weights that balance
-   them were never tuned — they are all 1.0 by default.
+3. ~~**Reconstruction and forecasting trade off.**~~ *Resolved
+   (`docs/loss_weight_sweep_report.md`), against my expectation.* I expected
+   down-weighting reconstruction to free the latent for forecasting. The opposite is
+   true: forecast MSE is **best at `w_reconstruction=1.0`** (0.3085) and degrades as
+   reconstruction is down-weighted (0.354 at 0.1). Reconstruction is a helpful
+   auxiliary task that regularizes the latent, not a competitor. The default 1:1:1 is
+   validated, not changed.
 
 ---
 
@@ -217,14 +260,24 @@ Pretraining takes ~7 minutes on an M-series GPU (MPS) at 60 epochs.
 
 ## Status
 
-Phases 0–3 complete. The core premise is **validated**: the latent RNN beats the
-AR(1) baseline by 31% on held-out subjects and by 27% on held-out *sites with an
-unseen TR*. The autoencoder does not beat PCA at matched width — an open problem,
-not a blocker, since the forecasting objective is what the foundation model is for.
+Phases 0–3 and 5 complete; the picture is now more honest than "it works":
 
-Next: Phase 4 (scale — more sites via TR conditioning, wider sweeps, logging) and
-Phase 5 (linear probing on frozen features, which is the real test of whether these
-representations transfer).
+- **Forecasting (Phase 3): the premise holds.** The latent RNN beats AR(1) by 31% on
+  held-out subjects (100% win rate) and 27% on held-out sites with an unseen TR. There
+  is real temporal structure and the model captures it.
+- **Spatial map (Phase 2 + ablation): linear.** The encoder never beats PCA at
+  matched width, so the spatial half is essentially a learned PCA.
+- **Transfer (Phase 5): phenotype is decodable, but the model doesn't beat raw
+  connectivity.** With connectivity pooling, DX/sex/age decode well (0.76 / 0.78 /
+  0.43) — but `raw_fc` matches or beats the learned features on all but age, and the
+  RNN remains the most *site*-decodable. Pretraining forecasts well without yielding a
+  better phenotype-transfer representation than standard functional connectivity.
+
+So the model forecasts well and encodes dynamics, but those dynamics are not yet a
+clean, biology-carrying transfer representation — they are partly acquisition, and
+they don't out-encode connectivity. Next: Phase 4 (scale) and the Phase 6 direction
+the probes most sharply motivated — **site-invariant / adversarial pretraining**, to
+push the learned dynamics off the scanner and toward biology.
 
 ## License
 
