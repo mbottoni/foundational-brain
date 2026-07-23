@@ -166,8 +166,63 @@ def _report(results: dict, out_dir: Path) -> None:
             f"- DX-group AUC under connectivity: raw_fc={dx_raw:.3f}, best model "
             f"representation={dx_best_model:.3f}. Compare to ~0.63 under mean+std."
         )
+    try:
+        make_figure(results, out_dir, REPO_ROOT / "figures")
+        lines += ["", "## Figure", "",
+                  "![probe_connectivity](../figures/probe_connectivity.png)"]
+    except Exception as exc:  # noqa: BLE001
+        print(f"(figure skipped: {exc})")
     (out_dir / "probe_connectivity_report.md").write_text("\n".join(lines))
     print(f"wrote {out_dir / 'probe_connectivity_report.md'}")
+
+
+def make_figure(results: dict, out_dir: Path, fig_dir: Path) -> None:
+    """Two stories in one figure: pooling matters, and model vs raw connectivity."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig_dir.mkdir(parents=True, exist_ok=True)
+
+    # optional comparison against the mean+std run
+    ms_path = out_dir / "probe_results.json"
+    ms = json.loads(ms_path.read_text()) if ms_path.exists() else None
+
+    def head(res, target, feat):
+        p = res["probes"].get(target, {}).get(feat)
+        if not p:
+            return None
+        return p.get("auc_mean", p.get("accuracy_mean", p.get("r2_mean")))
+
+    targets = [("dx_group", "AUC"), ("sex", "AUC"), ("age", "R²"), ("site", "acc")]
+    fig, axes = plt.subplots(1, len(targets), figsize=(3.0 * len(targets), 3.8))
+    for ax, (t, ylab) in zip(axes, targets):
+        bars, vals, colors = [], [], []
+        if ms is not None:
+            best_ms = max(
+                (head(ms, t, f) for f in ("pca", "encoder", "rnn")
+                 if head(ms, t, f) is not None),
+                default=None,
+            )
+            if best_ms is not None:
+                bars.append("mean+std\n(best)"); vals.append(best_ms)
+                colors.append("#BBBBBB")
+        for f, c in (("raw_fc", "#4C72B0"), ("encoder_fc", "#55A868"),
+                     ("rnn_fc", "#C44E52")):
+            v = head(results, t, f)
+            if v is not None:
+                bars.append(f.replace("_fc", "\nfc")); vals.append(v); colors.append(c)
+        ax.bar(bars, vals, color=colors)
+        ax.set_title(t)
+        ax.set_ylabel(ylab)
+        ax.tick_params(axis="x", labelsize=7)
+    fig.suptitle("Connectivity pooling recovers phenotype; model ≈ raw connectivity",
+                 fontsize=10)
+    fig.tight_layout()
+    fig.savefig(fig_dir / "probe_connectivity.png", dpi=130)
+    plt.close(fig)
+    print(f"wrote {fig_dir / 'probe_connectivity.png'}")
 
 
 if __name__ == "__main__":
